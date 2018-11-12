@@ -1,0 +1,114 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for spark precesses
+#
+# processname: sparkd
+# description: spark
+# chkconfig: 
+# description: Start up the spark service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=1
+USER=lite
+SPARK_HOME="/home/$USER/spark"
+
+
+start(){
+  RETVAL=1
+  su - ${USER} -c "${SPARK_HOME}/sbin/start-master.sh"
+  echo "spark master is started..."
+  su - ${USER} -c "${SPARK_HOME}/sbin/start-slaves.sh"
+  echo "spark workers is started..."
+  RETVAL=0
+}
+stop(){
+  RETVAL=1
+  Wstr=`su - ${USER} -c "jps | grep Worker"`
+  #Wstr=${Wstr% *}
+  if [[ "x$Wstr" != "x" ]];then   
+    su - ${USER} -c "${SPARK_HOME}/sbin/stop-slaves.sh"
+    #kill -9 $Wstr
+    echo "spark workers are stoped..."
+  else
+    echo "spark workers are not running..."
+  fi
+
+  Mstr=`su - ${USER} -c "jps | grep Master"`
+  #Mstr=${Mstr% *}
+  if [[ "x$Mstr" != "x" ]];then   
+    su - ${USER} -c "${SPARK_HOME}/sbin/stop-master.sh"
+    #kill -9 $Mstr
+    echo "spark Master($Mstr) is killed...."
+  else
+    echo "spark Master is not running..."
+  fi
+  RETVAL=0
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  WRETVAL=1
+  Wstr=`su - ${USER} -c "jps | grep Worker"`
+  #Wstr=${Wstr% *}
+  if [[ "x$Wstr" != "x" ]];then   
+    #kill -9 $Wstr
+    echo "spark worker($Wstr) is running..."
+	WRETVAL=0
+  else
+    echo "spark worker is down..."
+	WRETVAL=1
+  fi
+
+  MRETVAL=1
+  Mstr=`su - ${USER} -c "jps | grep Master"`
+  #Mstr=${Mstr% *}
+  if [[ "x$Mstr" != "x" ]];then   
+    #kill -9 $Mstr
+    echo "spark Master($Mstr) is running...."
+	MRETVAL=0
+  else
+    echo "spark Master is down..."
+	MRETVAL=1
+  fi
+  RETVAL=$((MRETVAL+WRETVAL))
+}
+
+case "$1" in
+start)
+  if [ -f ${SPARK_HOME}/sbin/start-master.sh ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${SPARK_HOME}/sbin/stop-master.sh ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/filewatcherd or /etc/init.d/filewatcherd
+# init script for filewatcher precesses
+#
+# processname: filewatcherd
+# description: filewatcher is used for watching a file path
+# chkconfig: 
+# description: Start up the filewatcher service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=$?
+USER=lite
+FW_HOME="/home/$USER/filewatcher-2.0"
+
+#export JAVA_HOME=/home/lite/jdk1.8.0_131
+source /home/$USER/.bash_profile
+
+start(){
+  if [ "`whoami`" = "root" ];then
+    su - ${USER} -c "nohup sh ${FW_HOME}/filewatcher-start.sh >/dev/null 2>&1 &"
+    echo "filewatcher service is started..."
+  elif [ "`whoami`" = "lite" ];then
+    chmod 777 ${FW_HOME}/filewatcher-start.sh
+    eval "nohup ${FW_HOME}/filewatcher-start.sh >/dev/null 2>&1 &"
+    echo "filewatcher service is started..."
+  else
+    echo "please used lite or root"
+  fi
+}
+stop(){
+  #str=`su - ${USER} -c "jps | grep LogCollectorMain"`
+  #str=${str% *}
+  str=`ps aux | grep FileWatcher | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then   
+    kill -9 $str
+    echo "filewatcher service($str) is killed...."
+  else
+    echo "filewatcher servie is not running..."
+  fi
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  #str=`su - ${USER} -c "jps | grep LogCollectorMain"`
+  str=`ps aux | grep FileWatcher | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then
+     echo "filewatcher($str) is running..."
+     return 0
+  else
+     echo "filewatcher is down..."
+     return 1
+  fi
+}
+
+case "$1" in
+start)
+  if [ -f ${FW_HOME}/filewatcher-start.sh ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${FW_HOME}/filewatcher-start.sh ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

@@ -1,0 +1,110 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for kafka precesses
+#
+# processname: kafkad
+# description: kafka is a distributed  streaming platform
+# chkconfig: 
+# description: Start up the kafka service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=$?
+USER=lite
+KAFKA_HOME="/home/$USER/kafka"
+
+#export JAVA_HOME=/home/lite/jdk1.8.0_131
+source /home/$USER/.bash_profile
+
+start(){
+  if [ "`whoami`" = "root" ];then
+    su - ${USER} -c "${KAFKA_HOME}/bin/zookeeper-server-start.sh ${KAFKA_HOME}/config/zookeeper.properties > ${KAFKA_HOME}/logs/zk-server-start.log &"
+    sleep 20
+    echo "zookeeper service is started..."
+    su - ${USER} -c "${KAFKA_HOME}/bin/kafka-server-start.sh ${KAFKA_HOME}/config/server.properties > ${KAFKA_HOME}/logs/kafka_server.log &"
+    sleep 10
+    echo "kafka service is started..."
+  elif [ "`whoami`" = "lite" ];then
+    echo "java_home=$JAVA_HOME"
+    ${KAFKA_HOME}/bin/zookeeper-server-start.sh ${KAFKA_HOME}/config/zookeeper.properties > ${KAFKA_HOME}/logs/zk-server-start.log &
+    sleep 20
+    echo "zookeeper service is started..."
+    ${KAFKA_HOME}/bin/kafka-server-start.sh ${KAFKA_HOME}/config/server.properties > ${KAFKA_HOME}/logs/kafka_server.log &
+    sleep 10
+    echo "kafka service is started..."
+  else
+     echo "please used lite or root"
+  fi
+}
+stop(){
+  #stop zookeepr
+  #str=`su - ${USER} -c "jps | grep Kafka"`
+  strz=`ps aux | grep -i 'zookeeper\.properties' | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$strz" != "x" ]];then   
+    #su - ${USER} -c "${KAFKA_HOME}/bin/kafka-server-stop.sh"
+    kill -9 $strz
+    echo "zookeeper service($str) is killed..."
+  else
+    echo "zookeeper servie is not running..."
+  fi
+  #stop kafka
+  strk=`ps aux | grep -i 'kafka\.Kafka' | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$strk" != "x" ]];then   
+    kill -9 $strk
+    echo "kafka service($str) is killed..."
+  else
+    echo "kafka servie is not running..."
+  fi
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  # su - ${USER} -c "${KAFKA_HOME}/bin/kafka-server-stop.sh"
+  str=`ps aux | grep -i 'kafka\.Kafka' | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then
+     echo "kafka($str) is running..."
+     return 0
+  else
+     echo "kafka is down..."
+     return 1
+  fi
+}
+
+case "$1" in
+start)
+  if [ -f ${KAFKA_HOME}/bin/kafka-server-start.sh ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${KAFKA_HOME}/bin/kafka-server-stop.sh ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

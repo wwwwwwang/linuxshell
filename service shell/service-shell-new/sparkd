@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for spark precesses
+#
+# processname: sparkd
+# description: spark
+# chkconfig: 
+# description: Start up the spark service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=1
+USER=lite
+SPARK_HOME="/home/$USER/spark"
+
+#export JAVA_HOME=/home/lite/jdk1.8.0_131
+source /home/$USER/.bash_profile
+
+start(){
+  RETVAL=1
+  if [ "`whoami`" = "root" ];then
+    su - ${USER} -c "${SPARK_HOME}/sbin/start-master.sh"
+    echo "spark master is started..."
+    su - ${USER} -c "${SPARK_HOME}/sbin/start-slaves.sh"
+    echo "spark workers is started..."
+  elif [ "`whoami`" = "lite" ];then
+    ${SPARK_HOME}/sbin/start-master.sh
+	echo "spark master is started..."
+    ${SPARK_HOME}/sbin/start-slaves.sh
+    echo "spark workers is started..."
+  else
+    echo "please used lite or root"
+  fi   
+  RETVAL=0
+}
+stop(){
+  RETVAL=1
+  #Wstr=`su - ${USER} -c "jps | grep Worker"`
+  Wstr=`ps aux | grep worker\.Worker | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  #Wstr=${Wstr% *}
+  if [[ "x$Wstr" != "x" ]];then   
+    #su - ${USER} -c "${SPARK_HOME}/sbin/stop-slaves.sh"
+    kill -9 $Wstr
+    echo "spark workers are stoped..."
+  else
+    echo "spark workers are not running..."
+  fi
+
+  #Mstr=`su - ${USER} -c "jps | grep Master"`
+  Mstr=`ps aux | grep master\.Master | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  #Mstr=${Mstr% *}
+  if [[ "x$Mstr" != "x" ]];then   
+    #su - ${USER} -c "${SPARK_HOME}/sbin/stop-master.sh"
+    kill -9 $Mstr
+    echo "spark master($Mstr) is killed...."
+  else
+    echo "spark master is not running..."
+  fi
+  RETVAL=0
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  WRETVAL=1
+  Wstr=`ps aux | grep worker\.Worker | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  #Wstr=${Wstr% *}
+  if [[ "x$Wstr" != "x" ]];then   
+    #kill -9 $Wstr
+    echo "spark worker($Wstr) is running..."
+	WRETVAL=0
+  else
+    echo "spark worker is down..."
+	WRETVAL=1
+  fi
+
+  MRETVAL=1
+  Mstr=`ps aux | grep master\.Master | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  #Mstr=${Mstr% *}
+  if [[ "x$Mstr" != "x" ]];then   
+    #kill -9 $Mstr
+    echo "spark master($Mstr) is running...."
+	MRETVAL=0
+  else
+    echo "spark master is down..."
+	MRETVAL=1
+  fi
+  RETVAL=$((MRETVAL+WRETVAL))
+}
+
+case "$1" in
+start)
+  if [ -f ${SPARK_HOME}/sbin/start-master.sh ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${SPARK_HOME}/sbin/stop-master.sh ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

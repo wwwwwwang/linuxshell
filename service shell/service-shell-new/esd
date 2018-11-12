@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for elasticsearch precesses
+#
+# processname: elasticsearch
+# description: Elasticsearch is a distributed, RESTful search and analytics engine
+# chkconfig: 
+# description: Start up the elasticsearch service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=$?
+USER=lite
+ES_HOME="/home/${USER}/elasticsearch-5.3.2"
+
+#export JAVA_HOME=/home/lite/jdk1.8.0_131
+source /home/$USER/.bash_profile
+
+
+start(){
+  if [ "`whoami`" = "root" ];then
+    su - ${USER} -c "${ES_HOME}/bin/elasticsearch -d"
+	echo "elasticsearch service is started..."
+  elif [ "`whoami`" = "lite" ];then
+    ${ES_HOME}/bin/elasticsearch -d
+	echo "elasticsearch service is started..."
+  else
+    echo "please used lite or root"
+  fi
+  
+}
+stop(){
+  #str=`su - ${USER} -c "jps | grep Elasticsearch"`
+  #str=${str% *}
+  str=`ps aux | grep Elasticsearch | grep java | grep ${USER} | grep -v grep  | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then   
+    #su - ${USER} -c "${ES_HOME}/bin/kafka-server-stop.sh"
+    kill -9 $str
+    echo "elasticsearch service($str) is killed..."
+  else
+    echo "elasticsearch servie is not running..."
+  fi
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  #str=`su - ${USER} -c "jps | grep Elasticsearch"`
+  str=`ps aux | grep Elasticsearch | grep java | grep ${USER} | grep -v grep  | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then
+     echo "elasticsearch($str) is running..."
+     return 0
+  else
+     echo "elasticsearch is down..."
+     return 1
+  fi
+}
+
+case "$1" in
+start)
+  if [ -f ${ES_HOME}/bin/elasticsearch ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${ES_HOME}/bin/elasticsearch ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

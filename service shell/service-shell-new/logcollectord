@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for logcollector precesses
+#
+# processname: logcollectord
+# description: logcollector is used for collecting all logs
+# chkconfig: 
+# description: Start up the logcollector service.
+
+if [ -f /etc/init.d/functions ]; then
+  . /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+  . /etc/rc.d/init.d/functions
+else
+  echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=$?
+USER=lite
+LC_HOME="/home/$USER/log-collector"
+
+#export JAVA_HOME=/home/lite/jdk1.8.0_131
+source /home/$USER/.bash_profile
+
+start(){
+  if [ "`whoami`" = "root" ];then
+    su - ${USER} -c "nohup sh ${LC_HOME}/bin/start.sh >/dev/null 2>&1 &"
+    echo "logcollector service is started..."
+  elif [ "`whoami`" = "lite" ];then
+    chmod 777 ${LC_HOME}/bin/start.sh
+    eval "nohup ${LC_HOME}/bin/start.sh >/dev/null 2>&1 &"
+    echo "logcollector service is started..."
+  else
+    echo "please used lite or root"
+  fi
+}
+stop(){
+  #str=`su - ${USER} -c "jps | grep LogCollectorMain"`
+  #str=${str% *}
+  str=`ps aux | grep LogCollectorMain | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then   
+    kill -9 $str
+    echo "logcollector service($str) is killed...."
+  else
+    echo "logcollector servie is not running..."
+  fi
+}
+restart(){
+  stop  
+  sleep 2
+  start
+}
+
+status(){
+  #str=`su - ${USER} -c "jps | grep LogCollectorMain"`
+  str=`ps aux | grep LogCollectorMain | grep java | grep ${USER} | grep -v grep | awk '{print $2}'`
+  if [[ "x$str" != "x" ]];then
+     echo "logcollector($str) is running..."
+     return 0
+  else
+     echo "logcollector is down..."
+     return 1
+  fi
+}
+
+case "$1" in
+start)
+  if [ -f ${LC_HOME}/bin/start.sh ];
+  then
+  start
+  fi
+  ;;
+stop)
+  if [ -f ${LC_HOME}/bin/start.sh ];
+  then
+  stop
+  fi
+  ;;
+restart|reload)
+  restart
+  ;;
+status)
+  status
+  ;;
+*)
+  echo $"Usage: $0 {start|stop|restart|reload|status}"
+  exit 1
+  ;;
+esac
+
+exit $RETVAL

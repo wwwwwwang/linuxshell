@@ -1,0 +1,64 @@
+#!/bin/bash
+#
+# mail jisenzhang@163.com.cn
+# /etc/rc.d/init.d/tomcatd or /etc/init.d/tomcatd
+# init script for tomcat precesses
+#
+# processname: tomcatd
+# description: tomcat is a j2se server
+# chkconfig: 2345 86 16
+# description: Start up the Tomcat servlet engine.
+
+if [ -f /etc/init.d/functions ]; then
+. /etc/init.d/functions
+elif [ -f /etc/rc.d/init.d/functions ]; then
+. /etc/rc.d/init.d/functions
+else
+echo -e "/atomcat: unable to locate functions lib. Cannot continue."
+exit -1
+fi
+
+RETVAL=$?
+CATALINA_HOME="/home/lite/tomcat"
+
+
+start(){
+       su - lite -c /home/lite/tomcat/bin/startup.sh 
+       }
+stop(){
+       su - lite -c /home/lite/tomcat/bin/shutdown.sh 
+       str=`ps -ef | grep "catalina.startup.Bootstrap start" | grep -v grep | awk '{print $2}'`
+       if [ $str ];then
+          kill -9 $str
+       fi
+       }
+restart(){
+          stop  
+	  start
+	  }
+
+case "$1" in
+start)
+if [ -f $CATALINA_HOME/bin/startup.sh ];
+then
+echo $"Starting Tomcat"
+start
+fi
+;;
+stop)
+if [ -f $CATALINA_HOME/bin/shutdown.sh ];
+then
+echo $"Stopping Tomcat"
+stop
+fi
+;;
+restart|reload)
+restart
+;;
+*)
+echo $"Usage: $0 {start|stop|restart|reload}"
+exit 1
+;;
+esac
+
+exit $RETVAL
